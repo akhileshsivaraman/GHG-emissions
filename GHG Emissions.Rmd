@@ -18,8 +18,36 @@ ghg_section_totals <- read_csv("annual_emissions_section_totals.csv")
 ghg_section_breakdown <- read_csv("annual_emissions_breakdown.csv")
 ```
 
+# Exploratory Data Analysis
+## Total Emissions
+Overall, GHG emissions are trending downwards.
 ```{r}
-# summary plots
+# summary plot: total annual emissions
+annual_emissions <- ghg_section_totals[22,]
+annual_emissions <- annual_emissions |>
+  pivot_longer(cols = c("1990":"2021"),
+               names_to = "Year",
+               values_to = "Emissions") |>
+  select(!`Section letter`)
 
+ggplot(annual_emissions) +
+  geom_point(aes(Year, Emissions)) +
+  theme_classic() # custom theme later
+```
+
+## Emissions By Section
+There are seven sections contributing more heavily to total emissions.
+There is not a reduction in emissions across the board. "Agriculture, forestry and fishing", "Consumer expenditure" and "Transport and storage" have not seen reductions. [run stats test to see if there has been a reduction. test last year's data against mean/median]
+```{r}
+# summary plot: emissions by section
+annual_section_emissions <- ghg_section_totals[-c(22),] |>
+  pivot_longer(cols = c("1990":"2021"),
+               names_to = "Year",
+               values_to = "Emissions")
+
+ggplot(annual_section_emissions) +
+  geom_point(aes(Year, Emissions)) +
+  facet_wrap(~ `Section name`) +
+  theme_classic()
 ```
 
