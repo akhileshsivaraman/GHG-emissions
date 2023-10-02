@@ -7,3 +7,19 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+# libraries
+library(tidyverse)
+```
+
+```{r}
+# load data
+ghg_section_totals <- read_csv("annual_emissions_section_totals.csv")
+ghg_section_breakdown <- read_csv("annual_emissions_breakdown.csv")
+```
+
+```{r}
+# summary plots
+
+```
+
