@@ -13,7 +13,7 @@ pct_change <- function(sector_of_interest, sector_emissions_data){
     filter(Year == "2021") |>
     pull(Emissions)
   
-  percentage_change <- ((emissions_1990 - emissions_2021) / emissions_1990) * 100
+  percentage_change <- ((emissions_2021 - emissions_1990) / emissions_1990) * 100
   
   return(percentage_change)
 }

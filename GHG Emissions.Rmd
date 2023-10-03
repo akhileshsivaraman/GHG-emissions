@@ -4,7 +4,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r}
@@ -39,9 +39,9 @@ ggplot(annual_emissions) +
   theme_classic() # custom theme later
 ```
 
-## Emissions By Section
+## Emissions By Industry
 
-* There are seven sections contributing more heavily to total emissions.
+* There are seven industries contributing more heavily to total emissions.
 * There is not a reduction in emissions across the board. Comparatively, "Agriculture, forestry and fishing", "Consumer expenditure" and "Transport and storage" have not seen reductions.
 ```{r}
 # summary plot: emissions by section
@@ -67,13 +67,13 @@ slice_max(thirty_year_emissions, order_by = `Emissions over span`, n = 3)
 
 
 ## Emissions By Sector
-A breakdown of emissions across the sectors of the 3 most polluting sections
+A breakdown of emissions across the sectors of the 3 most polluting industries.
 
 ### Electricity, gas, steam and air conditioning supply
 
 * emissions from each sector has changed by:
 ```{r}
-# summary plot: emissions by sector
+# summary plot: emissions by sector d
 d_emissions <- ghg_section_breakdown |>
   filter(`Section letter` == "D") |>
   select("Sector":"2021") |>
@@ -88,8 +88,6 @@ ggplot(d_emissions) +
 ```
 
 ```{r}
-pct_change("Electricity production - gas", d_emissions)
-
 d_sectors <- unique(d_emissions$Sector)
 
 d_sectors_change <- map(d_sectors, pct_change, d_emissions)
@@ -103,8 +101,62 @@ d_sectors_change_table <- cbind(d_sectors, d_sectors_change) |>
 ```
 
 
-
 ### Consumer Expenditure
+```{r}
+# summary plot: emissions by consumer expenditure
+consumer_expenditure_emissions <- ghg_section_breakdown |>
+  filter(grepl("Consumer expenditure", Sector)) |>
+  select("Sector":"2021") |>
+  pivot_longer(cols = c("1990":"2021"),
+               names_to = "Year",
+               values_to = "Emissions")
+
+ggplot(consumer_expenditure_emissions) +
+  geom_point(aes(Year, Emissions)) +
+  theme_classic() +
+  facet_wrap(~Sector)
+```
+
+```{r}
+consumer_expenditure_sectors <- unique(consumer_expenditure_emissions$Sector)
+
+consumer_expenditure_change <- map(consumer_expenditure_sectors, pct_change, consumer_expenditure_emissions)
+consumer_expenditure_change <- list_simplify(consumer_expenditure_change)
+
+consumer_expenditure_change_table <- cbind(consumer_expenditure_sectors, consumer_expenditure_change) |>
+  as_tibble() |>
+  `colnames<-`(c("Sector", "Percentage change")) |>
+  mutate(across(c(`Percentage change`), as.numeric)) |>
+  mutate(across(c(`Percentage change`), round, 2))
+```
 
 
 ### Manufacturing
+```{r}
+# summary plot: emissions by sector c
+c_emissions <- ghg_section_breakdown |>
+  filter(`Section letter` == "C") |>
+  select("Sector":"2021") |>
+  pivot_longer(cols = c("1990":"2021"),
+               names_to = "Year",
+               values_to = "Emissions")
+
+ggplot(c_emissions) +
+  geom_point(aes(Year, Emissions)) +
+  theme_classic() +
+  facet_wrap(~Sector)
+```
+
+```{r}
+c_sectors <- unique(c_emissions$Sector)
+
+c_sectors_change <- map(c_sectors, pct_change, c_emissions)
+c_sectors_change <- list_simplify(c_sectors_change)
+
+c_sectors_change_table <- cbind(c_sectors, c_sectors_change) |>
+  as_tibble() |>
+  `colnames<-`(c("Sector", "Percentage change")) |>
+  mutate(across(c(`Percentage change`), as.numeric)) |>
+  mutate(across(c(`Percentage change`), round, 2))
+```
+
