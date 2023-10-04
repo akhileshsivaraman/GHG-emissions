@@ -13,11 +13,13 @@ knitr::opts_chunk$set(echo = FALSE)
   * Overall
   * Industries and sectors contributing the most to emissions
   * Industries and sectors reducing emissions the quickest and the slowest
+* How might emissions change over the next 5 years?
 * What are the implications of this for the UK government?
 
 ```{r message=FALSE}
 # libraries
 library(tidyverse)
+library()
 
 # functions
 source("pct_change.R")
@@ -40,7 +42,9 @@ annual_emissions <- annual_emissions |>
   pivot_longer(cols = c("1990":"2021"),
                names_to = "Year",
                values_to = "Emissions") |>
-  select(!`Section letter`)
+  select(!`Section letter`) |>
+  mutate(Year = as.numeric(Year))
+
 
 
 # percentage change
@@ -121,7 +125,7 @@ setdiff(absolute_top_emitting_section_1990$`Section name`, absolute_top_emitting
 Industries reducing emissions the quickest and the slowest:
 
 * Although emissions have fallen overall, there has not been a reduction in emissions across the board. Construction, Real Estate, Wholesale & Retail Trade, Administrative Activities and Accommodation & Food Services have seen increases
-* Comparatively, amongst the top 8 emitters, Agriculture, Forestry & Fishing, Consumer Expenditure and Transport & Storage have seen smaller reductions (<15%)
+* Comparatively, amongst the top 8 emitters, Agriculture, Forestry & Fishing, Consumer Expenditure and Transport & Storage have seen smaller emissions reductions (<15%)
 * The biggest percentage decrease in emissions has come from Mining & Quarrying with the biggest percentage increase coming from Real Estate
 * While Real Estate has seen the biggest percentage increase, Construction has seen the biggest absolute increase
 * The largest absolute decrease in emissions has been in Electricity Supply
@@ -167,101 +171,42 @@ setdiff(top_emitting_sectors_1990$Sector, top_emitting_sectors_2021$Sector)
 ```
 
 
+Industries reducing emissions the quickest and the slowest:
 
-### Emissions By Sector
-A breakdown of emissions across the sectors of the 3 most polluting industries.
-
-#### Electricity, gas, steam and air conditioning supply
-
-* emissions from each sector has changed by:
+* Of the 131 sectors, 100 have reduced emissions over the 31-year period
+* Electricity production has experienced the largest increases and reductions in emissions
+* Production using oil has seen the greatest decrease while production from other sources has seen the greatest increases in emissions (by both percentage and absolute number)
 ```{r}
-# summary plot: emissions by sector d
-d_emissions <- ghg_section_breakdown |>
-  filter(`Section letter` == "D") |>
-  select("Sector":"2021") |>
-  pivot_longer(cols = c("1990":"2021"),
-               names_to = "Year",
-               values_to = "Emissions")
+# percentage changes
+ghg_sector_pct_changes <- ghg_sector_totals |>
+  rowwise(`Sector`) |>
+  summarise(pct_change = ((`2021` - `1990`)/`1990`)*100) |>
+  arrange(desc(pct_change))
 
-ggplot(d_emissions) +
-  geom_point(aes(Year, Emissions)) +
-  theme_classic() +
-  facet_wrap(~Sector)
-```
-
-```{r}
-# percentage change calculations
-d_sectors <- unique(d_emissions$Sector)
-
-d_sectors_change <- map(d_sectors, pct_change, d_emissions)
-d_sectors_change <- list_simplify(d_sectors_change)
-
-d_sectors_change_table <- cbind(d_sectors, d_sectors_change) |>
-  as_tibble() |>
-  `colnames<-`(c("Sector", "Percentage change")) |>
-  mutate(across(c(`Percentage change`), as.numeric)) |>
-  mutate(across(c(`Percentage change`), round, 2))
+# absolute changes
+ghg_section_absolute_changes <- ghg_sector_totals |>
+  rowwise(`Sector`) |>
+  summarise(absolute_change = `2021` - `1990`) |>
+  arrange(desc(absolute_change))
 ```
 
 
-#### Consumer Expenditure
-```{r}
-# summary plot: emissions by consumer expenditure
-consumer_expenditure_emissions <- ghg_section_breakdown |>
-  filter(grepl("Consumer expenditure", Sector)) |>
-  select("Sector":"2021") |>
-  pivot_longer(cols = c("1990":"2021"),
-               names_to = "Year",
-               values_to = "Emissions")
 
-ggplot(consumer_expenditure_emissions) +
-  geom_point(aes(Year, Emissions)) +
-  theme_classic() +
-  facet_wrap(~Sector)
+## How might emissions change over the next 5 years?
+
+### Forecasting total emissions
+Simple model of emissions over the 31-year period
+```{r}
+ggplot(annual_emissions, aes(Year, Emissions)) +
+  geom_point() +
+  geom_smooth(colour = "blue", fullrange = TRUE) +
+  theme_classic()
 ```
 
 ```{r}
-# percentage change calculations
-consumer_expenditure_sectors <- unique(consumer_expenditure_emissions$Sector)
+ts_annual_emissions <- ts(annual_emissions$Emissions, frequency = 31)
+autocor_annual_emissions <- acf(ts_annual_emissions) # significant autocorrelation for x + 7
+p_autocor_annual_emissions <- pacf(ts_annual_emissions) # indicates that there is non-significant noise influencing autocorrelation
 
-consumer_expenditure_change <- map(consumer_expenditure_sectors, pct_change, consumer_expenditure_emissions)
-consumer_expenditure_change <- list_simplify(consumer_expenditure_change)
-
-consumer_expenditure_change_table <- cbind(consumer_expenditure_sectors, consumer_expenditure_change) |>
-  as_tibble() |>
-  `colnames<-`(c("Sector", "Percentage change")) |>
-  mutate(across(c(`Percentage change`), as.numeric)) |>
-  mutate(across(c(`Percentage change`), round, 2))
-```
-
-
-#### Manufacturing
-```{r}
-# summary plot: emissions by sector c
-c_emissions <- ghg_section_breakdown |>
-  filter(`Section letter` == "C") |>
-  select("Sector":"2021") |>
-  pivot_longer(cols = c("1990":"2021"),
-               names_to = "Year",
-               values_to = "Emissions")
-
-ggplot(c_emissions) +
-  geom_point(aes(Year, Emissions)) +
-  theme_classic() +
-  facet_wrap(~Sector)
-```
-
-```{r}
-# percentage change calculations
-c_sectors <- unique(c_emissions$Sector)
-
-c_sectors_change <- map(c_sectors, pct_change, c_emissions)
-c_sectors_change <- list_simplify(c_sectors_change)
-
-c_sectors_change_table <- cbind(c_sectors, c_sectors_change) |>
-  as_tibble() |>
-  `colnames<-`(c("Sector", "Percentage change")) |>
-  mutate(across(c(`Percentage change`), as.numeric)) |>
-  mutate(across(c(`Percentage change`), round, 2))
 ```
 
