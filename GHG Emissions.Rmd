@@ -19,10 +19,11 @@ knitr::opts_chunk$set(echo = FALSE)
 ```{r message=FALSE}
 # libraries
 library(tidyverse)
-library()
+library(forecast)
 
 # functions
 source("pct_change.R")
+source("industry_forecast.R")
 
 # load data
 ghg_section_totals <- read_csv("annual_emissions_section_totals.csv")
@@ -195,18 +196,41 @@ ghg_section_absolute_changes <- ghg_sector_totals |>
 ## How might emissions change over the next 5 years?
 
 ### Forecasting total emissions
-Simple model of emissions over the 31-year period
-```{r}
-ggplot(annual_emissions, aes(Year, Emissions)) +
-  geom_point() +
-  geom_smooth(colour = "blue", fullrange = TRUE) +
-  theme_classic()
-```
 
 ```{r}
-ts_annual_emissions <- ts(annual_emissions$Emissions, frequency = 31)
+# create time series object
+ts_annual_emissions <- ts(annual_emissions$Emissions, frequency = 1, start = 1990, end = 2021)
+
+# autocorrelation and partial acf
 autocor_annual_emissions <- acf(ts_annual_emissions) # significant autocorrelation for x + 7
 p_autocor_annual_emissions <- pacf(ts_annual_emissions) # indicates that there is non-significant noise influencing autocorrelation
 
+# ARIMA
+model_annual_emissions <- auto.arima(y = ts_annual_emissions)
+model_annual_emissions
+
+# check if this is a good model
+acf(model_annual_emissions$residuals)
+pacf(model_annual_emissions$residuals) # both indicate stationarity
+
+# forecast
+forecast_annual_emissions <- forecast(model_annual_emissions, h = 5, level = 30)
+
+plot(forecast_annual_emissions,
+     showgap = F)
+
+autoplot(forecast_annual_emissions,
+         fcol = "red") +
+  autolayer(forecast_annual_emissions, showgap = F)
+```
+
+### Forecasting industry emissions
+
+```{r}
+industries <- ghg_section_totals$`Section name`
+
+forecast_industry_emissions <- map(industries, industry_forecast, ghg_section_totals)
+
+forecast_industry_emissions_plots <- map(forecast_industry_emissions, autoplot)
 ```
 
