@@ -1,16 +1,24 @@
 ---
 title: "GHG Emissions"
-output: html_document
+output: 
+  html_document:
+    theme:
+      bg: "#f2f1f2"
+      fg: "#0f1015"
+      base_font:
+        google: Inter
+      heading_font:
+        google: Inter
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
 ## Questions
 
 * How are UK emissions changing?
-  * Overall
+  * Overall trends
   * Industries and sectors contributing the most to emissions
   * Industries and sectors reducing emissions the quickest and the slowest
 * How might emissions change over the next 5 years?
@@ -28,10 +36,30 @@ source("industry_forecast.R")
 # load data
 ghg_section_totals <- read_csv("annual_emissions_section_totals.csv")
 ghg_sector_totals <- read_csv("annual_emissions_breakdown.csv")
+
+# colour palette
+bg <- "#f2f1f2"
+fg <- "#0f1015"
+primary <- "#7b2454"
+
+# scales
+options(scipen = 10000)
+
+# plot theming
+theme_nao <- theme(
+    panel.grid = element_blank(),
+    plot.background = element_rect(fill = bg),
+    panel.background = element_rect(fill = bg),
+    text = element_text(colour = primary),
+    axis.text = element_text(colour = primary),
+    axis.line = element_line(colour = primary),
+    axis.ticks = element_line(colour = primary)
+  )
 ```
 
+___
 ## How are UK emissions changing?
-### Overall
+### Overall trends
 
 * GHG emissions are trending downwards with a 40.4% reduction in the mass of air emission per annum in thousand tonnes of C02 equivalent
 * GHG emissions in 2021 are 340'158 thousand tonnes of CO2e lower than in 1990
@@ -64,8 +92,9 @@ total_GHG_2021 - total_GHG_1990
 
 # summary plot
 ggplot(annual_emissions) +
-  geom_point(aes(Year, Emissions)) +
-  theme_classic() # custom theme later
+  geom_point(aes(Year, Emissions), colour = primary) +
+  ylab("Mass of air emission per annum in thousand tonnes of CO2e") +
+  theme_nao
 ```
 
 
@@ -75,13 +104,17 @@ ggplot(annual_emissions) +
 annual_section_emissions <- ghg_section_totals[-c(22),] |>
   pivot_longer(cols = c("1990":"2021"),
                names_to = "Year",
-               values_to = "Emissions")
+               values_to = "Emissions") |>
+  mutate(Year = as.numeric(Year))
 
 # summary plot
 ggplot(annual_section_emissions) +
-  geom_point(aes(Year, Emissions)) +
-  facet_wrap(~ `Section name`) +
-  theme_classic()
+  geom_point(aes(Year, Emissions), colour = primary) +
+  facet_wrap(~ `Section name`, labeller = labeller(`Section name` = label_wrap_gen(width = 30))) +
+  scale_x_continuous(n.breaks = 2) +
+  theme_nao +
+  theme(strip.text.x = element_text(size = 8, colour = primary),
+        strip.background = element_rect(fill = bg))
 ```
 
 Industries contributing the most to emissions:
@@ -102,8 +135,8 @@ ghg_section_total_period <- ghg_section_totals |>
 
 ggplot(ghg_section_total_period |>
          filter(`Section name` != "Total greenhouse gas emissions")) +
-  geom_col(aes(`Section letter`, `Total emissions`)) +
-  theme_classic()
+  geom_col(aes(`Section letter`, `Total emissions`), fill = primary) +
+  theme_nao
 
 
 # top emitters in 2021
@@ -193,6 +226,7 @@ ghg_section_absolute_changes <- ghg_sector_totals |>
 
 
 
+___
 ## How might emissions change over the next 5 years?
 
 ### Forecasting total emissions
@@ -216,21 +250,28 @@ pacf(model_annual_emissions$residuals) # both indicate stationarity
 # forecast
 forecast_annual_emissions <- forecast(model_annual_emissions, h = 5, level = 30)
 
-plot(forecast_annual_emissions,
-     showgap = F)
-
+# plot forecast
 autoplot(forecast_annual_emissions,
-         fcol = "red") +
-  autolayer(forecast_annual_emissions, showgap = F)
+         fcol = primary) +
+  geom_forecast(forecast_annual_emissions, showgap = F, colour = primary) +
+  theme_nao
+
+# forecast table
+forecast_annual_emissions
 ```
 
-### Forecasting industry emissions
+### Forecasting emissions at the industry level
 
 ```{r}
-industries <- ghg_section_totals$`Section name`
+industries <- unique(ghg_section_totals$`Section name`)
 
 forecast_industry_emissions <- map(industries, industry_forecast, ghg_section_totals)
+names(forecast_industry_emissions) <- industries
+forecast_industry_emissions_plots <- map(forecast_industry_emissions, autoplot) 
 
-forecast_industry_emissions_plots <- map(forecast_industry_emissions, autoplot)
+# add a shiny widget to select table and plot (add layers to plot)
 ```
 
+
+___
+## What are the implications of this for the UK government?

@@ -1,6 +1,4 @@
 #---- industry_forecast ----
-industries <- unique(ghg_section_totals$`Section name`)
-
 industry_forecast <- function(industry_of_interest, ghg_section_totals){
   
   # prepare data
