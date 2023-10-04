@@ -115,6 +115,10 @@ ghg_section_absolute_changes <- ghg_section_totals |>
 
 
 ### Sectors
+```{r}
+
+```
+
 
 
 ### Emissions By Sector
