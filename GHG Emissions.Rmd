@@ -24,7 +24,7 @@ source("pct_change.R")
 
 # load data
 ghg_section_totals <- read_csv("annual_emissions_section_totals.csv")
-ghg_section_breakdown <- read_csv("annual_emissions_breakdown.csv")
+ghg_sector_totals <- read_csv("annual_emissions_breakdown.csv")
 ```
 
 ## How are UK emissions changing?
@@ -82,12 +82,39 @@ ggplot(annual_section_emissions) +
 Industries contributing the most to emissions:
 
 * Eight have contributed heavily to total emissions over the 31-year period
+* All 8 were amongst the top 8 highest emitters in 2021
+* In 1990, Public Administration was in the top 8 and has since been displaced by Wholesale and Retail
 ```{r}
 # total emissions over period
 ghg_section_total_period <- ghg_section_totals |>
   rowwise(`Section name`) |>
-  summarise(total_emissions = sum(c_across("1990":"2021"))) |>
-  arrange(desc(total_emissions))
+  summarise(total_emissions = sum(c_across("1990":"2021")),
+            `Section letter` = `Section letter`) |>
+  arrange(desc(total_emissions)) |>
+  rename("Total emissions" = total_emissions) |>
+  mutate(`Section letter` = case_when(`Section name` == "Consumer expenditure" ~ "CE",
+                                      TRUE ~ `Section letter`))
+
+ggplot(ghg_section_total_period |>
+         filter(`Section name` != "Total greenhouse gas emissions")) +
+  geom_col(aes(`Section letter`, `Total emissions`)) +
+  theme_classic()
+
+
+# top emitters in 2021
+absolute_top_emitting_section_2021 <- ghg_section_totals |>
+  filter(`Section name` != "Total greenhouse gas emissions") |>
+  slice_max(order_by = `2021`, n = 8) |>
+  select(c("Section letter", "Section name", "2021"))
+
+# top emitters in 1990
+absolute_top_emitting_section_1990 <- ghg_section_totals |>
+  filter(`Section name` != "Total greenhouse gas emissions") |>
+  slice_max(order_by = `1990`, n = 8) |>
+  select(c("Section letter", "Section name", "1990"))
+
+setdiff(absolute_top_emitting_section_2021$`Section name`, absolute_top_emitting_section_1990$`Section name`)
+setdiff(absolute_top_emitting_section_1990$`Section name`, absolute_top_emitting_section_2021$`Section name`)
 ```
 
 
@@ -115,8 +142,28 @@ ghg_section_absolute_changes <- ghg_section_totals |>
 
 
 ### Sectors
-```{r}
+Sectors contributing the most to emissions:
 
+* Since 1991, 7 sectors have produced more than 1 million thousand tonnes of CO2e
+* These 7 sectors were also the top emitters in 2021
+* 5 feature in the top 7 emitters of 1990 with Manufacture of petrochemicals and Mining of coal and lignite rounding out the list in place of Electricity production - gas and Air transport services
+```{r}
+# total emissions over period
+ghg_sector_total_period <- ghg_sector_totals |>
+  rowwise(Sector) |>
+  summarise(total_emissions = sum(c_across("1990":"2021"))) |>
+  arrange(desc(total_emissions))
+
+# top 7 emitters in 2021
+top_emitting_sectors_2021 <- ghg_sector_totals |>
+  slice_max(order_by = `2021`, n = 7)
+
+# top 7 emitters in 1990
+top_emitting_sectors_1990 <- ghg_sector_totals |>
+  slice_max(order_by = `1990`, n = 7)
+
+setdiff(top_emitting_sectors_2021$Sector, top_emitting_sectors_1990$Sector)
+setdiff(top_emitting_sectors_1990$Sector, top_emitting_sectors_2021$Sector)
 ```
 
 
