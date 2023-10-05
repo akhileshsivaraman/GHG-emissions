@@ -9,6 +9,7 @@ output:
         google: Inter
       heading_font:
         google: Inter
+runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -17,17 +18,20 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 ## Questions
 
-* How are UK emissions changing?
-  * Overall trends
-  * Industries and sectors contributing the most to emissions
-  * Industries and sectors reducing emissions the quickest and the slowest
-* How might emissions change over the next 5 years?
-* What are the implications of this for the UK government?
+-   How are UK emissions changing?
+    -   Overall trends
+    -   Industries and sectors contributing the most to emissions
+    -   Industries and sectors reducing emissions the quickest and the slowest
+-   How might emissions change over the next 5 years?
+-   What are the implications of this for the UK government?
 
 ```{r message=FALSE}
 # libraries
 library(tidyverse)
 library(forecast)
+library(knitr)
+library(kableExtra)
+library(shiny)
 
 # functions
 source("pct_change.R")
@@ -57,14 +61,22 @@ theme_nao <- theme(
   )
 ```
 
-___
+------------------------------------------------------------------------
+
 ## How are UK emissions changing?
+
+### Data
+Data are taken from the ONS' Atmospheric Emissions dataset. The dataset describes greenhouse gas (GHG) emissions by industry and gas between 1990 and 2021. Carbon dioxide, methane, nitrous oxide, hydro-fluorocarbons, nitrogen trifuoride and sulphur hexafluoride comprise GHGs. The current, rather than provisional, edition of the dataset is used.
+
+Prior to analysis, the tables describing GHG totals were tidied to remove superfluous rows and columns and throughout the analysis, data are queried, reshaped and used to calculate statistics to investigate changes in GHG emissions.
+
+
 ### Overall trends
 
-* GHG emissions are trending downwards with a 40.4% reduction in the mass of air emission per annum in thousand tonnes of C02 equivalent
-* GHG emissions in 2021 are 340'158 thousand tonnes of CO2e lower than in 1990
-```{r}
-#---- total annual emissions ----
+-   GHG emissions are trending downwards with a 40.4% reduction in the mass of air emission per annum in thousand tonnes of C02 equivalent
+-   GHG emissions in 2021 are 340'158 thousand tonnes of CO2e lower than in 1990
+
+```{r include=FALSE}
 # prepare data
 annual_emissions <- ghg_section_totals[22,]
 annual_emissions <- annual_emissions |>
@@ -89,7 +101,9 @@ total_GHG_pct_change <- ((total_GHG_2021 - total_GHG_1990) / total_GHG_1990) * 1
 
 # absolute change
 total_GHG_2021 - total_GHG_1990
+```
 
+```{r}
 # summary plot
 ggplot(annual_emissions) +
   geom_point(aes(Year, Emissions), colour = primary) +
@@ -97,32 +111,34 @@ ggplot(annual_emissions) +
   theme_nao
 ```
 
-
 ### Industries
-```{r}
+
+```{r include=FALSE}
 # prepare data
 annual_section_emissions <- ghg_section_totals[-c(22),] |>
   pivot_longer(cols = c("1990":"2021"),
                names_to = "Year",
                values_to = "Emissions") |>
   mutate(Year = as.numeric(Year))
+```
 
+```{r out.width="99%", fig.height=7}
 # summary plot
 ggplot(annual_section_emissions) +
-  geom_point(aes(Year, Emissions), colour = primary) +
+  geom_path(aes(Year, Emissions), colour = primary) +
   facet_wrap(~ `Section name`, labeller = labeller(`Section name` = label_wrap_gen(width = 30))) +
   scale_x_continuous(n.breaks = 2) +
+  scale_y_continuous(n.breaks = 3) +
+  ylab("Thousand tonnes of CO2e") +
   theme_nao +
-  theme(strip.text.x = element_text(size = 8, colour = primary),
-        strip.background = element_rect(fill = bg))
+  theme(strip.text.x = element_text(size = 6, colour = primary),
+        strip.background = element_rect(fill = bg),
+        axis.text = element_text(size = 5))
 ```
 
 Industries contributing the most to emissions:
 
-* Eight have contributed heavily to total emissions over the 31-year period
-* All 8 were amongst the top 8 highest emitters in 2021
-* In 1990, Public Administration was in the top 8 and has since been displaced by Wholesale and Retail
-```{r}
+```{r include=FALSE}
 # total emissions over period
 ghg_section_total_period <- ghg_section_totals |>
   rowwise(`Section name`) |>
@@ -132,13 +148,24 @@ ghg_section_total_period <- ghg_section_totals |>
   rename("Total emissions" = total_emissions) |>
   mutate(`Section letter` = case_when(`Section name` == "Consumer expenditure" ~ "CE",
                                       TRUE ~ `Section letter`))
+```
 
+-   Eight have contributed over 1 million thousand tonnes of C02e to total emissions over the 31-year period
+
+```{r}
 ggplot(ghg_section_total_period |>
          filter(`Section name` != "Total greenhouse gas emissions")) +
   geom_col(aes(`Section letter`, `Total emissions`), fill = primary) +
+  geom_hline(yintercept = 1000000, linetype = 2, alpha = 0.3) +
+  ylab("Thousand tonnes of Co2e") +
+  scale_y_continuous(n.breaks = 6) +
   theme_nao
+```
 
+-   All 8 were amongst the top 8 highest emitters in 2021
+-   In 1990, Public Administration was in the top 8 and has since been displaced by Wholesale and Retail
 
+```{r include=FALSE}
 # top emitters in 2021
 absolute_top_emitting_section_2021 <- ghg_section_totals |>
   filter(`Section name` != "Total greenhouse gas emissions") |>
@@ -155,15 +182,26 @@ setdiff(absolute_top_emitting_section_2021$`Section name`, absolute_top_emitting
 setdiff(absolute_top_emitting_section_1990$`Section name`, absolute_top_emitting_section_2021$`Section name`)
 ```
 
+```{r}
+kable(absolute_top_emitting_section_2021) |>
+  kable_minimal(lightable_options = "striped", full_width = T)
+
+```
+
+```{r}
+kable(absolute_top_emitting_section_1990) |>
+  kable_minimal(lightable_options = "striped", full_width = T)
+```
 
 Industries reducing emissions the quickest and the slowest:
 
-* Although emissions have fallen overall, there has not been a reduction in emissions across the board. Construction, Real Estate, Wholesale & Retail Trade, Administrative Activities and Accommodation & Food Services have seen increases
-* Comparatively, amongst the top 8 emitters, Agriculture, Forestry & Fishing, Consumer Expenditure and Transport & Storage have seen smaller emissions reductions (<15%)
-* The biggest percentage decrease in emissions has come from Mining & Quarrying with the biggest percentage increase coming from Real Estate
-* While Real Estate has seen the biggest percentage increase, Construction has seen the biggest absolute increase
-* The largest absolute decrease in emissions has been in Electricity Supply
-```{r}
+-   Although emissions have fallen overall, there has not been a reduction in emissions across the board. Construction, Real Estate, Wholesale & Retail Trade, Administrative Activities and Accommodation & Food Services have seen increases
+-   Comparatively, amongst the top 8 emitters, Agriculture, Forestry & Fishing, Consumer Expenditure and Transport & Storage have seen smaller emissions reductions (\<15%)
+-   The biggest percentage decrease in emissions has come from Mining & Quarrying with the biggest percentage increase coming from Real Estate
+-   While Real Estate has seen the biggest percentage increase, Construction has seen the biggest absolute increase
+-   The largest absolute decrease in emissions has been in Electricity Supply
+
+```{r include=FALSE}
 # percentage changes
 ghg_section_pct_changes <- ghg_section_totals |>
   rowwise(`Section name`) |>
@@ -177,21 +215,34 @@ ghg_section_absolute_changes <- ghg_section_totals |>
   arrange(desc(absolute_change))
 ```
 
+```{r}
+kable(head(ghg_section_pct_changes)) |>
+  kable_minimal(lightable_options = "striped", full_width = T)
+```
+```{r}
+kable(tail(ghg_section_pct_changes)) |>
+  kable_minimal(lightable_options = "striped", full_width = T)
+```
 
 
 ### Sectors
-Sectors contributing the most to emissions:
 
-* Since 1991, 7 sectors have produced more than 1 million thousand tonnes of CO2e
-* These 7 sectors were also the top emitters in 2021
-* 5 feature in the top 7 emitters of 1990 with Manufacture of petrochemicals and Mining of coal and lignite rounding out the list in place of Electricity production - gas and Air transport services
-```{r}
+```{r include=FALSE}
 # total emissions over period
 ghg_sector_total_period <- ghg_sector_totals |>
   rowwise(Sector) |>
   summarise(total_emissions = sum(c_across("1990":"2021"))) |>
   arrange(desc(total_emissions))
 
+```
+
+Sectors contributing the most to emissions:
+
+-   Since 1991, 7 sectors have produced more than 1 million thousand tonnes of CO2e
+-   These 7 sectors were also the top emitters in 2021
+-   5 feature in the top 7 emitters of 1990 with Manufacture of petrochemicals and Mining of coal and lignite rounding out the list in place of Electricity production - gas and Air transport services
+
+```{r include=FALSE}
 # top 7 emitters in 2021
 top_emitting_sectors_2021 <- ghg_sector_totals |>
   slice_max(order_by = `2021`, n = 7)
@@ -204,13 +255,18 @@ setdiff(top_emitting_sectors_2021$Sector, top_emitting_sectors_1990$Sector)
 setdiff(top_emitting_sectors_1990$Sector, top_emitting_sectors_2021$Sector)
 ```
 
+```{r}
+kable(top_emitting_sectors_2021) |>
+  kable_minimal(lightable_options = "striped", full_width = T)
+```
+```{r}
+kable(top_emitting_sectors_1990) |>
+  kable_minimal(lightable_options = "striped", full_width = T)
+```
+
 
 Industries reducing emissions the quickest and the slowest:
-
-* Of the 131 sectors, 100 have reduced emissions over the 31-year period
-* Electricity production has experienced the largest increases and reductions in emissions
-* Production using oil has seen the greatest decrease while production from other sources has seen the greatest increases in emissions (by both percentage and absolute number)
-```{r}
+```{r include=FALSE}
 # percentage changes
 ghg_sector_pct_changes <- ghg_sector_totals |>
   rowwise(`Sector`) |>
@@ -223,22 +279,70 @@ ghg_section_absolute_changes <- ghg_sector_totals |>
   summarise(absolute_change = `2021` - `1990`) |>
   arrange(desc(absolute_change))
 ```
+-   Of the 131 sectors, 100 have reduced emissions over the 31-year period
+-   Electricity production has experienced the largest increases and reductions in emissions
+-   Production using oil has seen the greatest decrease while production from other sources has seen the greatest increases in emissions (by both percentage and absolute number)
+
+```{r}
+kable(head(ghg_section_absolute_changes)) |>
+  kable_minimal(lightable_options = "striped", full_width = T)
+```
+```{r}
+kable(tail(ghg_section_absolute_changes)) |>
+  kable_minimal(lightable_options = "striped", full_width = T)
+```
 
 
+------------------------------------------------------------------------
 
-___
 ## How might emissions change over the next 5 years?
 
 ### Forecasting total emissions
 
-```{r}
+Conducting a time series analysis using ARIMA
+* Autoregressive: using previous values to predict future values
+* Integrated: applying a transformation to make the mean of the time series stationary
+* Moving Average model: incorporating error terms for forecasting
+
+```{r include=FALSE}
 # create time series object
 ts_annual_emissions <- ts(annual_emissions$Emissions, frequency = 1, start = 1990, end = 2021)
+```
 
-# autocorrelation and partial acf
+Step 1: Plotting the time series to visualise overall trends in the data
+As we saw earlier, emissions are trending down, which indicates that the time series is not stationary. 
+```{r}
+ggplot(annual_emissions) +
+  geom_point(aes(Year, Emissions), colour = fg, alpha = 0.4) +
+  geom_smooth(aes(Year, Emissions), colour = primary, se = FALSE, linewidth = 0.5) +
+  ylab("Mass of air emission per annum in thousand tonnes of CO2e") +
+  theme_nao
+```
+
+Step 2: Decompose the time series
+As there are no seasons in the data, there's no need to decompose the data beyond what we've seen in the observed data and trend above.
+
+Step 3: Autocorrelation and partial autocorrelation
+One of the assumptions when using an ARIMA model is that previous years have an influence on a future year. We investigate this by calculating autocorrelation: the correlation of a variable with itself at a different time. The autocorrelation plot indicates that for the next 7 time points, the value at time point x will have a strong influence.
+```{r include=FALSE}
 autocor_annual_emissions <- acf(ts_annual_emissions) # significant autocorrelation for x + 7
-p_autocor_annual_emissions <- pacf(ts_annual_emissions) # indicates that there is non-significant noise influencing autocorrelation
+```
+```{r}
+plot(autocor_annual_emissions, main = "Emissions autocorrelation")
+```
 
+
+The partial autocorrelation plots tells us time point x does not have a strong influence beyond itself once we remove the effect of intervening time points. It also suggests that our model should have one autoregressive term. 
+```{r include=FALSE}
+p_autocor_annual_emissions <- pacf(ts_annual_emissions) # indicates that there is non-significant noise influencing autocorrelation
+```
+```{r}
+plot(p_autocor_annual_emissions, main = "Emissions partial autocorrelation")
+```
+
+
+Step 4: Creating the model and forecasting
+```{r include=FALSE}
 # ARIMA
 model_annual_emissions <- auto.arima(y = ts_annual_emissions)
 model_annual_emissions
@@ -249,29 +353,98 @@ pacf(model_annual_emissions$residuals) # both indicate stationarity
 
 # forecast
 forecast_annual_emissions <- forecast(model_annual_emissions, h = 5, level = 30)
+```
 
+```{r}
 # plot forecast
 autoplot(forecast_annual_emissions,
          fcol = primary) +
   geom_forecast(forecast_annual_emissions, showgap = F, colour = primary) +
+  xlab("Year") +
+  ylab("Emissions") +
+  ggtitle("Forecasted emissions for the next 5 years") +
   theme_nao
-
-# forecast table
-forecast_annual_emissions
 ```
+The model generated is a differenced first-order autoregressive model meaning that we have introduced a lag of one time period and differenced the time series once to make it stationary prior to modelling.
+
+
+From the model, annual emissions are projected to continue declining in the UK with a reduction of close to 64000 thousand tonnes of CO2e between 2021 and 2026.
+```{r}
+# forecast table
+kable(forecast_annual_emissions, col.names = c("Forecasted emissions", "Lower forecast", "Upper forecast")) |>
+  kable_minimal(lightable_options = "striped", full_width = T)
+```
+
+Limitations:
+
+* assumes that changes in policies and other factors, like technological advances, impacting GHG emissions come into effect at a similar rate and have a similar size impact on GHG emissions
+* assumes that policies and other factors will continue to have the same directional effect on GHG emissions
+* assumes that industries and sectors that have seen an increase in GHG emissions over the 31-year period will continue to have an increasing footprint
+* the dataset is not dense
+* cannot incorporate expected changes in policy based on past data
 
 ### Forecasting emissions at the industry level
 
-```{r}
+```{r include=FALSE}
 industries <- unique(ghg_section_totals$`Section name`)
 
 forecast_industry_emissions <- map(industries, industry_forecast, ghg_section_totals)
 names(forecast_industry_emissions) <- industries
 forecast_industry_emissions_plots <- map(forecast_industry_emissions, autoplot) 
+```
+```{r}
+selectInput("industry_of_interest",
+            label = "Select an industry",
+            choices = industries)
 
-# add a shiny widget to select table and plot (add layers to plot)
+renderPlot({
+  forecast_industry_emissions_plots[[as.character(input$industry_of_interest)]] +
+    xlab("Year") +
+    ylab(paste0(input$industry_of_interest, " emissions")) +
+    ggtitle(paste0("Forecasted emissions for the next 5 years for ", input$industry_of_interest)) +
+    theme_nao
+})
+```
+
+------------------------------------------------------------------------
+
+## What are the implications of this for the UK government?
+### Climate Change Act 2008
+Climate Change Act 2008 commits the government to reduce GHG emissions by at least 100% of 1990 levels by 2050. As part of this commitment, the government have also set intermediary targets called carbon budgets. Each carbon budget is a cap on the amount of GHG emitted over a 5-year period.
+
+The model above covers the 2nd and 3rd carbon budgets.
+
+#### 2nd carbon budget
+The 2nd carbon budget came to an end in 2022 and demands a reduction of 38% on the 1990 baseline and a limit on CO2e of 2'544 million tonnes over the 5-year period starting 2018.
+
+According to the model, we expect emissions in 2022 to have been 482'133 thousand tonnes of CO2e representing a reduction of 43% thus indicating that the UK is on target.
+```{r include=FALSE}
+forecast_GHG_2022 <- forecast_annual_emissions$mean[1]
+
+budget_2_reduction <- ((forecast_GHG_2022 - total_GHG_1990) / total_GHG_1990) * 100
+```
+
+Cumulatively, in the 5-year period, the UK has emitted 2'588'245 thousand tonnes of C02e or 2'588 million tonnes of CO2e. Therefore, by this measure, the UK has failed to meet its 2nd budget goal and is off target.
+```{r include=FALSE}
+budget_2_cumulative <- annual_emissions |>
+  filter(between(Year, 2018, 2022))
+budget_2_cumulative <- sum(budget_2_cumulative$Emissions)
+budget_2_cumulative <- budget_2_cumulative + forecast_GHG_2022
 ```
 
 
-___
-## What are the implications of this for the UK government?
+### 3rd carbon budget
+The 3rd carbon budget covers 2023-2027. It calls for a reduction of 52% on the 1990 baseline and a limit of 1'950 million tonnes of CO2e in the 5-year period.
+
+The model estimates that the UK will emit 1'825 million tonnes of CO2e by 2026 meaning there is only 125 million tonnes of CO2e left in the 3rd carbon budget. Given that the the forecasted emissions in 2022-2026 are 3.5 times larger than the remainder of the budget, the UK is highly likely to miss this target.
+```{r include=FALSE}
+forecast_GHG_budget_3 <- forecast_annual_emissions$mean[2:5]
+forecast_GHG_budget_3 <- sum(forecast_GHG_budget_3)
+```
+
+Likewise, 2026 levels of emission are 48% lower than the 1990 baseline and the 2027 target is for emissions to be 52% lower so the UK will possibly miss that target too.
+```{r include=FALSE}
+forecast_GHG_2026 <- forecast_annual_emissions$mean[5]
+budget_3_reduction <- ((forecast_GHG_2026 - total_GHG_1990) / total_GHG_1990) * 100
+```
+
