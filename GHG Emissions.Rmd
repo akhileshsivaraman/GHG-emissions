@@ -9,7 +9,6 @@ output:
         google: Inter
       heading_font:
         google: Inter
-runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -256,11 +255,13 @@ setdiff(top_emitting_sectors_1990$Sector, top_emitting_sectors_2021$Sector)
 ```
 
 ```{r}
-kable(top_emitting_sectors_2021) |>
+kable(top_emitting_sectors_2021 |>
+        select(c("Section letter", "Sector", "2021"))) |>
   kable_minimal(lightable_options = "striped", full_width = T)
 ```
 ```{r}
-kable(top_emitting_sectors_1990) |>
+kable(top_emitting_sectors_1990 |>
+        select(c("Section letter", "Sector", "1990"))) |>
   kable_minimal(lightable_options = "striped", full_width = T)
 ```
 
