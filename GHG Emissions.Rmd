@@ -9,6 +9,7 @@ output:
         google: Inter
       heading_font:
         google: Inter
+runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -135,6 +136,8 @@ ggplot(annual_section_emissions) +
         axis.text = element_text(size = 5))
 ```
 
+\
+
 Industries contributing the most to emissions:
 
 ```{r include=FALSE}
@@ -192,6 +195,8 @@ kable(absolute_top_emitting_section_1990) |>
   kable_minimal(lightable_options = "striped", full_width = T)
 ```
 
+\
+
 Industries reducing emissions the quickest and the slowest:
 
 -   Although emissions have fallen overall, there has not been a reduction in emissions across the board. Construction, Real Estate, Wholesale & Retail Trade, Administrative Activities and Accommodation & Food Services have seen increases
@@ -205,13 +210,15 @@ Industries reducing emissions the quickest and the slowest:
 ghg_section_pct_changes <- ghg_section_totals |>
   rowwise(`Section name`) |>
   summarise(pct_change = ((`2021` - `1990`)/`1990`)*100) |>
-  arrange(desc(pct_change))
+  arrange(desc(pct_change)) |>
+  rename("Percentage change" = pct_change)
 
 # absolute changes
 ghg_section_absolute_changes <- ghg_section_totals |>
   rowwise(`Section name`) |>
   summarise(absolute_change = `2021` - `1990`) |>
-  arrange(desc(absolute_change))
+  arrange(desc(absolute_change)) |>
+  rename("GHG reduction in kt CO2e" = absolute_change)
 ```
 
 ```{r}
@@ -265,20 +272,23 @@ kable(top_emitting_sectors_1990 |>
   kable_minimal(lightable_options = "striped", full_width = T)
 ```
 
+\
 
-Industries reducing emissions the quickest and the slowest:
+Sectors reducing emissions the quickest and the slowest:
 ```{r include=FALSE}
 # percentage changes
 ghg_sector_pct_changes <- ghg_sector_totals |>
   rowwise(`Sector`) |>
   summarise(pct_change = ((`2021` - `1990`)/`1990`)*100) |>
-  arrange(desc(pct_change))
+  arrange(desc(pct_change)) |>
+  rename("Percentage change" = pct_change)
 
 # absolute changes
 ghg_section_absolute_changes <- ghg_sector_totals |>
   rowwise(`Sector`) |>
   summarise(absolute_change = `2021` - `1990`) |>
-  arrange(desc(absolute_change))
+  arrange(desc(absolute_change)) |>
+  rename("GHG reduction in kt CO2e" = absolute_change)
 ```
 -   Of the 131 sectors, 100 have reduced emissions over the 31-year period
 -   Electricity production has experienced the largest increases and reductions in emissions
@@ -301,6 +311,7 @@ kable(tail(ghg_section_absolute_changes)) |>
 ### Forecasting total emissions
 
 Conducting a time series analysis using ARIMA
+
 * Autoregressive: using previous values to predict future values
 * Integrated: applying a transformation to make the mean of the time series stationary
 * Moving Average model: incorporating error terms for forecasting
@@ -366,6 +377,7 @@ autoplot(forecast_annual_emissions,
   ggtitle("Forecasted emissions for the next 5 years") +
   theme_nao
 ```
+
 The model generated is a differenced first-order autoregressive model meaning that we have introduced a lag of one time period and differenced the time series once to make it stationary prior to modelling.
 
 
@@ -375,6 +387,8 @@ From the model, annual emissions are projected to continue declining in the UK w
 kable(forecast_annual_emissions, col.names = c("Forecasted emissions", "Lower forecast", "Upper forecast")) |>
   kable_minimal(lightable_options = "striped", full_width = T)
 ```
+
+\
 
 Limitations:
 
